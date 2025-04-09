@@ -51,7 +51,7 @@ export abstract class Slick {
 					style.setAttribute("href", href);
 
 					style.onload = () => resolve();
-				    Slick.favicon.insertAdjacentElement("beforebegin", style);
+					Slick.favicon.insertAdjacentElement("beforebegin", style);
 				});
 			}),
 		);
