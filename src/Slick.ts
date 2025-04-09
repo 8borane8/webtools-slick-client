@@ -78,9 +78,9 @@ export abstract class Slick {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
-				"User-Agent": "slick-client",
 			},
 			body: JSON.stringify({
+				agent: "slick-client",
 				template: reload ? null : Slick.template,
 			}),
 		});
