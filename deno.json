@@ -1,0 +1,21 @@
+{
+	"name": "@webtools/slick-client",
+	"exports": "./src/mod.ts",
+	"version": "0.1.0",
+
+	"lock": false,
+	"imports": {},
+
+	"fmt": {
+		"indentWidth": 4,
+		"lineWidth": 120,
+		"useTabs": true
+	},
+
+	"compilerOptions": {
+		"lib": [
+			"deno.window",
+			"dom"
+		]
+	}
+}
