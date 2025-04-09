@@ -3,7 +3,7 @@ export abstract class Slick {
 	private static initialized: boolean = false;
 
 	private static readonly title: HTMLTitleElement = document.querySelector("title")!;
-	private static readonly favicon: HTMLLinkElement = document.querySelector("link[rel='icon shortcut']")!;
+	private static readonly favicon: HTMLLinkElement = document.querySelector("link[rel='shortcut icon']")!;
 	private static readonly importmap: HTMLScriptElement = document.querySelector("script[type='importmap']")!;
 
 	// deno-lint-ignore ban-types
