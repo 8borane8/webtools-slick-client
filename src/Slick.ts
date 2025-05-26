@@ -20,15 +20,17 @@ export abstract class Slick {
 			await Slick.redirect(Slick.getPathFromUrl(new URL(globalThis.location.href)));
 		});
 
-		globalThis.addEventListener("DOMContentLoaded", () => Slick.addEventListeners("a"));
+		globalThis.addEventListener("DOMContentLoaded", () => Slick.addEventListeners());
 	}
 
 	private static getPathFromUrl(url: URL): string {
 		return url.pathname + url.search + url.hash;
 	}
 
-	private static addEventListeners(selector: string): void {
-		document.querySelectorAll<HTMLLinkElement>(selector).forEach((link) => {
+	private static addEventListeners(app = true): void {
+		const pre = app ? "#app > " : "";
+
+		document.querySelectorAll<HTMLLinkElement>(`${pre}a`).forEach((link) => {
 			link.addEventListener("click", async (event) => {
 				if (!["", "_self"].includes(link.getAttribute("target") || "")) return;
 
@@ -37,6 +39,36 @@ export abstract class Slick {
 
 				event.preventDefault();
 				await Slick.redirect(Slick.getPathFromUrl(url));
+			});
+		});
+
+		const formGetSelector = `${pre}form[method='get'], ${pre}form[method='GET']`;
+		document.querySelectorAll<HTMLFormElement>(formGetSelector).forEach((form) => {
+			form.addEventListener("submit", async (event) => {
+				const action = new URL(form.getAttribute("action") || globalThis.location.pathname);
+				if (globalThis.location.host != action.host) return;
+
+				event.preventDefault();
+				const params = new URLSearchParams(Object.entries(new FormData(form)));
+
+				await Slick.redirect(`${Slick.getPathFromUrl(action)}?${params}`);
+			});
+		});
+
+		const formPostSelector = `${pre}form[method='post'], ${pre}form[method='POST']`;
+		document.querySelectorAll<HTMLFormElement>(formPostSelector).forEach((form) => {
+			form.addEventListener("submit", async (event) => {
+				const action = new URL(form.getAttribute("action") || globalThis.location.pathname);
+				if (globalThis.location.host != action.host) return;
+
+				event.preventDefault();
+				const response = await fetch(Slick.getPathFromUrl(action), {
+					method: "POST",
+					redirect: "manual",
+					body: new FormData(form),
+				});
+
+				await Slick.redirect(response.headers.get("Location")!);
 			});
 		});
 	}
@@ -110,7 +142,7 @@ export abstract class Slick {
 			Array.from(document.querySelectorAll("script[slick-type='template']")).forEach((s) => s.remove());
 
 			await Slick.loadScripts(jsonResponse.template.scripts, "template");
-			Slick.addEventListeners("a");
+			Slick.addEventListeners();
 		}
 
 		headChildren.slice(headChildren.indexOf(Slick.favicon) + 1).forEach((e) => e.remove());
@@ -125,7 +157,7 @@ export abstract class Slick {
 		Array.from(document.querySelectorAll("script[slick-type='page']")).forEach((s) => s.remove());
 
 		await Slick.loadScripts(jsonResponse.page.scripts, "page");
-		Slick.addEventListeners("#app a");
+		Slick.addEventListeners(false);
 
 		if (globalThis.location.hash == "") globalThis.scrollTo(0, 0);
 		else document.querySelector(globalThis.location.hash)?.scrollIntoView({ behavior: "smooth" });
