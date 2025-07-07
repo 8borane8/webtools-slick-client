@@ -2,9 +2,10 @@ export abstract class Slick {
 	private static template: string;
 	private static initialized: boolean = false;
 
-	private static readonly title: HTMLTitleElement = document.querySelector("title")!;
-	private static readonly favicon: HTMLLinkElement = document.querySelector("link[rel='shortcut icon']")!;
-	private static readonly importmap: HTMLScriptElement = document.querySelector("script[type='importmap']")!;
+	private static readonly root = document.querySelector<HTMLDivElement>("#root")!;
+	private static readonly title = document.querySelector<HTMLTitleElement>("title")!;
+	private static readonly favicon = document.querySelector<HTMLLinkElement>("link[rel='shortcut icon']")!;
+	private static readonly importmap = document.querySelector<HTMLScriptElement>("script[type='importmap']")!;
 
 	// deno-lint-ignore ban-types
 	private static readonly onloadListeners: Array<Function> = [];
@@ -134,9 +135,7 @@ export abstract class Slick {
 			const oldTemplateStyles = document.querySelectorAll("link[rel='stylesheet'][slick-type='template']");
 			await Slick.loadStyles(jsonResponse.template.styles, "template");
 
-			const bodyChildren = Array.from(document.body.children);
-			bodyChildren.slice(0, bodyChildren.indexOf(Slick.importmap)).forEach((e) => e.remove());
-			Slick.importmap.insertAdjacentHTML("beforebegin", jsonResponse.template.body);
+			Slick.root.innerHTML = jsonResponse.template.body;
 
 			oldTemplateStyles.forEach((s) => s.remove());
 			Array.from(document.querySelectorAll("script[slick-type='template']")).forEach((s) => s.remove());
