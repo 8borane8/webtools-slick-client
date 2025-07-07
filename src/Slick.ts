@@ -20,7 +20,7 @@ export abstract class Slick {
 			await Slick.redirect(Slick.getPathFromUrl(new URL(globalThis.location.href)));
 		});
 
-		globalThis.addEventListener("DOMContentLoaded", () => Slick.addEventListeners());
+		globalThis.addEventListener("DOMContentLoaded", () => Slick.addEventListeners(false));
 	}
 
 	private static getPathFromUrl(url: URL): string {
@@ -142,7 +142,7 @@ export abstract class Slick {
 			Array.from(document.querySelectorAll("script[slick-type='template']")).forEach((s) => s.remove());
 
 			await Slick.loadScripts(jsonResponse.template.scripts, "template");
-			Slick.addEventListeners();
+			Slick.addEventListeners(false);
 		}
 
 		headChildren.slice(headChildren.indexOf(Slick.favicon) + 1).forEach((e) => e.remove());
@@ -157,7 +157,7 @@ export abstract class Slick {
 		Array.from(document.querySelectorAll("script[slick-type='page']")).forEach((s) => s.remove());
 
 		await Slick.loadScripts(jsonResponse.page.scripts, "page");
-		Slick.addEventListeners(false);
+		Slick.addEventListeners();
 
 		if (globalThis.location.hash == "") globalThis.scrollTo(0, 0);
 		else document.querySelector(globalThis.location.hash)?.scrollIntoView({ behavior: "smooth" });
