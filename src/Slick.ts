@@ -29,7 +29,7 @@ export abstract class Slick {
 	}
 
 	private static addEventListeners(app = true): void {
-		const pre = app ? "#app > " : "";
+		const pre = app ? "#app " : "";
 
 		document.querySelectorAll<HTMLLinkElement>(`${pre}a`).forEach((link) => {
 			link.addEventListener("click", async (event) => {
