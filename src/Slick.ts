@@ -1,11 +1,11 @@
 export abstract class Slick {
 	private static template: string;
 	private static initialized: boolean = false;
+	private static redirecting: boolean = false;
 
 	private static readonly root = document.querySelector<HTMLDivElement>("#root")!;
 	private static readonly title = document.querySelector<HTMLTitleElement>("title")!;
 	private static readonly favicon = document.querySelector<HTMLLinkElement>("link[rel='shortcut icon']")!;
-	private static readonly importmap = document.querySelector<HTMLScriptElement>("script[type='importmap']")!;
 
 	// deno-lint-ignore ban-types
 	private static readonly onloadListeners: Array<Function> = [];
@@ -106,7 +106,10 @@ export abstract class Slick {
 		);
 	}
 
-	public static async redirect(url: string, reload: boolean = false): Promise<void> {
+	public static async redirect(url: string, reload: boolean = false, goTop: boolean = true): Promise<void> {
+		if (Slick.redirecting) return;
+		Slick.redirecting = true;
+
 		const response = await fetch(url, {
 			method: "POST",
 			headers: {
@@ -158,10 +161,13 @@ export abstract class Slick {
 		await Slick.loadScripts(jsonResponse.page.scripts, "page");
 		Slick.addEventListeners();
 
-		if (globalThis.location.hash == "") globalThis.scrollTo(0, 0);
-		else document.querySelector(globalThis.location.hash)?.scrollIntoView({ behavior: "smooth" });
+		if (globalThis.location.hash != "") {
+			const target = document.querySelector(globalThis.location.hash);
+			if (target) target.scrollIntoView({ behavior: "smooth" });
+		} else if (goTop) globalThis.scrollTo(0, 0);
 
 		Slick.onloadListeners.forEach((fnc) => fnc());
+		Slick.redirecting = false;
 	}
 
 	// deno-lint-ignore ban-types
