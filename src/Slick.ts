@@ -7,8 +7,7 @@ export abstract class Slick {
 	private static readonly title = document.querySelector<HTMLTitleElement>("title")!;
 	private static readonly favicon = document.querySelector<HTMLLinkElement>("link[rel='shortcut icon']")!;
 
-	// deno-lint-ignore ban-types
-	private static readonly onloadListeners: Array<Function> = [];
+	private static readonly onloadListeners: Array<() => Promise<void> | void> = [];
 
 	public static initialize(template: string): void {
 		if (Slick.initialized) return;
@@ -36,7 +35,7 @@ export abstract class Slick {
 				if (!["", "_self"].includes(link.getAttribute("target") || "")) return;
 
 				const url = new URL(link.href);
-				if (globalThis.location.host != url.host) return;
+				if (globalThis.location.host !== url.host) return;
 
 				event.preventDefault();
 				await Slick.redirect(Slick.getPathFromUrl(url));
@@ -46,11 +45,18 @@ export abstract class Slick {
 		const formGetSelector = `${pre}form[method='get'], ${pre}form[method='GET']`;
 		document.querySelectorAll<HTMLFormElement>(formGetSelector).forEach((form) => {
 			form.addEventListener("submit", async (event) => {
-				const action = new URL(form.getAttribute("action") || globalThis.location.pathname);
-				if (globalThis.location.host != action.host) return;
+				const action = new URL(
+					form.getAttribute("action") || globalThis.location.pathname,
+					globalThis.location.origin,
+				);
+				if (globalThis.location.host !== action.host) return;
 
 				event.preventDefault();
-				const params = new URLSearchParams(Object.entries(new FormData(form)));
+				const formData = new FormData(form);
+				const params = new URLSearchParams();
+				for (const [key, value] of formData.entries()) {
+					params.append(key, value.toString());
+				}
 
 				await Slick.redirect(`${Slick.getPathFromUrl(action)}?${params}`);
 			});
@@ -59,8 +65,11 @@ export abstract class Slick {
 		const formPostSelector = `${pre}form[method='post'], ${pre}form[method='POST']`;
 		document.querySelectorAll<HTMLFormElement>(formPostSelector).forEach((form) => {
 			form.addEventListener("submit", async (event) => {
-				const action = new URL(form.getAttribute("action") || globalThis.location.pathname);
-				if (globalThis.location.host != action.host) return;
+				const action = new URL(
+					form.getAttribute("action") || globalThis.location.pathname,
+					globalThis.location.origin,
+				);
+				if (globalThis.location.host !== action.host) return;
 
 				event.preventDefault();
 				const response = await fetch(Slick.getPathFromUrl(action), {
@@ -69,7 +78,8 @@ export abstract class Slick {
 					body: new FormData(form),
 				});
 
-				await Slick.redirect(response.headers.get("Location")!);
+				const location = response.headers.get("Location");
+				if (location) await Slick.redirect(location);
 			});
 		});
 	}
@@ -110,68 +120,74 @@ export abstract class Slick {
 		if (Slick.redirecting) return;
 		Slick.redirecting = true;
 
-		const response = await fetch(url, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({
-				agent: "slick-client",
-				template: reload ? null : Slick.template,
-			}),
-		});
+		try {
+			const response = await fetch(url, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					agent: "slick-client",
+					template: reload ? null : Slick.template,
+				}),
+			});
 
-		const jsonResponse = await response.json();
-		globalThis.history.pushState({}, "", response.redirected ? response.url : url);
+			const jsonResponse = await response.json();
+			globalThis.history.pushState({}, "", response.redirected ? response.url : url);
 
-		Slick.title.innerHTML = jsonResponse.title;
-		Slick.favicon.href = jsonResponse.favicon;
+			Slick.title.innerHTML = jsonResponse.title;
+			Slick.favicon.href = jsonResponse.favicon;
 
-		const headChildren = Array.from(document.head.children);
+			const headChildren = Array.from(document.head.children);
 
-		if (jsonResponse.template != null) {
-			Slick.template = jsonResponse.template.name;
+			if (jsonResponse.template !== null) {
+				Slick.template = jsonResponse.template.name;
 
-			headChildren.slice(0, headChildren.indexOf(Slick.title)).forEach((e) => e.remove());
-			Slick.title.insertAdjacentHTML("beforebegin", jsonResponse.template.head);
+				headChildren.slice(0, headChildren.indexOf(Slick.title)).forEach((e) => e.remove());
+				Slick.title.insertAdjacentHTML("beforebegin", jsonResponse.template.head);
 
-			const oldTemplateStyles = document.querySelectorAll("link[rel='stylesheet'][slick-type='template']");
-			await Slick.loadStyles(jsonResponse.template.styles, "template");
+				const oldTemplateStyles = document.querySelectorAll("link[rel='stylesheet'][slick-type='template']");
+				await Slick.loadStyles(jsonResponse.template.styles, "template");
 
-			Slick.root.innerHTML = jsonResponse.template.body;
+				Slick.root.innerHTML = jsonResponse.template.body;
 
-			oldTemplateStyles.forEach((s) => s.remove());
-			Array.from(document.querySelectorAll("script[slick-type='template']")).forEach((s) => s.remove());
+				oldTemplateStyles.forEach((s) => s.remove());
+				Array.from(document.querySelectorAll("script[slick-type='template']")).forEach((s) => s.remove());
 
-			await Slick.loadScripts(jsonResponse.template.scripts, "template");
-			Slick.addEventListeners(false);
+				await Slick.loadScripts(jsonResponse.template.scripts, "template");
+				Slick.addEventListeners(false);
+			}
+
+			headChildren.slice(headChildren.indexOf(Slick.favicon) + 1).forEach((e) => e.remove());
+			Slick.favicon.insertAdjacentHTML("afterend", jsonResponse.page.head);
+
+			const oldPageStyles = document.querySelectorAll("link[rel='stylesheet'][slick-type='page']");
+			await Slick.loadStyles(jsonResponse.page.styles, "page");
+
+			document.querySelector("#app")!.innerHTML = jsonResponse.page.body;
+
+			oldPageStyles.forEach((s) => s.remove());
+			Array.from(document.querySelectorAll("script[slick-type='page']")).forEach((s) => s.remove());
+
+			await Slick.loadScripts(jsonResponse.page.scripts, "page");
+			Slick.addEventListeners();
+
+			if (globalThis.location.hash !== "") {
+				const target = document.querySelector(globalThis.location.hash);
+				if (target) target.scrollIntoView({ behavior: "smooth" });
+			} else if (goTop) {
+				globalThis.scrollTo(0, 0);
+			}
+
+			await Promise.all(Slick.onloadListeners.map((fnc) => fnc()));
+		} catch (error) {
+			throw error;
+		} finally {
+			Slick.redirecting = false;
 		}
-
-		headChildren.slice(headChildren.indexOf(Slick.favicon) + 1).forEach((e) => e.remove());
-		Slick.favicon.insertAdjacentHTML("afterend", jsonResponse.page.head);
-
-		const oldPageStyles = document.querySelectorAll("link[rel='stylesheet'][slick-type='page']");
-		await Slick.loadStyles(jsonResponse.page.styles, "page");
-
-		document.querySelector("#app")!.innerHTML = jsonResponse.page.body;
-
-		oldPageStyles.forEach((s) => s.remove());
-		Array.from(document.querySelectorAll("script[slick-type='page']")).forEach((s) => s.remove());
-
-		await Slick.loadScripts(jsonResponse.page.scripts, "page");
-		Slick.addEventListeners();
-
-		if (globalThis.location.hash != "") {
-			const target = document.querySelector(globalThis.location.hash);
-			if (target) target.scrollIntoView({ behavior: "smooth" });
-		} else if (goTop) globalThis.scrollTo(0, 0);
-
-		Slick.onloadListeners.forEach((fnc) => fnc());
-		Slick.redirecting = false;
 	}
 
-	// deno-lint-ignore ban-types
-	public static addOnloadListener(fnc: Function) {
+	public static addOnloadListener(fnc: () => Promise<void> | void): void {
 		Slick.onloadListeners.push(fnc);
 	}
 }
