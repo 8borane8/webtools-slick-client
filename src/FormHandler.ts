@@ -1,6 +1,6 @@
 export type FormHandlerSubmit = (
 	body: Record<string, unknown>,
-	submitButton: HTMLElement | null,
+	submitButton: HTMLButtonElement | HTMLInputElement | null,
 ) => void | Promise<void>;
 
 export class FormHandler {
