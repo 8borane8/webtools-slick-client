@@ -1,7 +1,10 @@
-export type FormHandlerHandler = (body: Record<string, unknown>) => void | Promise<void>;
+export type FormHandlerSubmit = (
+	body: Record<string, unknown>,
+	submitButton: HTMLElement | null,
+) => void | Promise<void>;
 
 export class FormHandler {
-	constructor(private readonly form: HTMLFormElement, private readonly handler: FormHandlerHandler) {
+	constructor(private readonly form: HTMLFormElement, private readonly handler: FormHandlerSubmit) {
 		this.setupInputs();
 		this.setupSubmit();
 	}
@@ -124,13 +127,13 @@ export class FormHandler {
 		this.form.addEventListener("submit", async (event) => {
 			event.preventDefault();
 
-			const submitButton = this.form.querySelector<HTMLButtonElement | HTMLInputElement>('*[type="submit"]')!;
-			submitButton.disabled = true;
+			const submitButton = this.form.querySelector<HTMLButtonElement | HTMLInputElement>('*[type="submit"]');
+			if (submitButton) submitButton.disabled = true;
 
 			const body = FormHandler.parseForm(this.form);
-			await this.handler(body);
+			await this.handler(body, submitButton);
 
-			submitButton.disabled = false;
+			if (submitButton) submitButton.disabled = false;
 		});
 	}
 }
