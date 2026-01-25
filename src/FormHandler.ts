@@ -14,9 +14,9 @@ export class FormHandler {
 			const allowFloat = !input.hasAttribute("data-integer-only");
 			const numberRegex = allowFloat ? /^-?\d*\.?\d*$/ : /^-?\d+$/;
 
-			const min = input.min ? parseFloat(input.min) : undefined;
-			const max = input.max ? parseFloat(input.max) : undefined;
-			const step = input.step ? parseFloat(input.step) : undefined;
+			const min = parseFloat(input.min) || undefined;
+			const max = parseFloat(input.max) || undefined;
+			const step = parseFloat(input.step) || undefined;
 
 			let lastValue = input.value;
 			input.addEventListener("input", () => {
@@ -35,12 +35,17 @@ export class FormHandler {
 					input.value = max.toString();
 				}
 
+				lastValue = input.value;
+			});
+
+			input.addEventListener("change", () => {
+				const value = input.value;
+				const numValue = parseFloat(value);
+
 				if (step) {
 					const rounded = Math.round(numValue / step) * step;
 					input.value = rounded.toString();
 				}
-
-				lastValue = input.value;
 			});
 		});
 
