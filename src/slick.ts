@@ -122,7 +122,6 @@ export abstract class Slick {
 
 		try {
 			const response = await fetch(url, {
-				method: "POST",
 				headers: {
 					"X-Slick-Template": reload ? "" : Slick.template,
 				},
