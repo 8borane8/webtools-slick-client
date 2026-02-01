@@ -1,5 +1,6 @@
 export abstract class Slick {
 	private static template: string;
+	private static newVersion: boolean = false;
 	private static initialized: boolean = false;
 	private static redirecting: boolean = false;
 
@@ -9,10 +10,11 @@ export abstract class Slick {
 
 	private static readonly onloadListeners: Array<() => Promise<void> | void> = [];
 
-	public static initialize(template: string): void {
+	public static initialize(template: string, newVersion: boolean = false): void {
 		if (Slick.initialized) return;
 
 		Slick.template = template;
+		Slick.newVersion = newVersion;
 		Slick.initialized = true;
 
 		globalThis.addEventListener("popstate", async (event) => {
@@ -121,11 +123,22 @@ export abstract class Slick {
 		Slick.redirecting = true;
 
 		try {
-			const response = await fetch(url, {
-				headers: {
-					"X-Slick-Template": reload ? "" : Slick.template,
-				},
-			});
+			const response = Slick.newVersion
+				? await fetch(url, {
+					headers: {
+						"X-Slick-Template": reload ? "" : Slick.template,
+					},
+				})
+				: await fetch(url, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						agent: "slick-client",
+						template: reload ? null : Slick.template,
+					}),
+				});
 
 			const jsonResponse = await response.json();
 			globalThis.history.pushState({}, "", response.redirected ? response.url : url);
