@@ -1,7 +1,7 @@
 {
 	"name": "@webtools/slick-client",
 	"exports": "./src/mod.ts",
-	"version": "0.1.971",
+	"version": "0.2.0",
 	"license": "MIT",
 
 	"lock": false,

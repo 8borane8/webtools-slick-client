@@ -124,12 +124,8 @@ export abstract class Slick {
 			const response = await fetch(url, {
 				method: "POST",
 				headers: {
-					"Content-Type": "application/json",
+					"X-Slick-Template": reload ? "" : Slick.template,
 				},
-				body: JSON.stringify({
-					agent: "slick-client",
-					template: reload ? null : Slick.template,
-				}),
 			});
 
 			const jsonResponse = await response.json();

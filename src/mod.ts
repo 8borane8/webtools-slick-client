@@ -1,3 +1,3 @@
-export * from "./Cookies.ts";
-export * from "./FormHandler.ts";
-export * from "./Slick.ts";
+export * from "./utils/cookies.ts";
+export * from "./handlers/form.ts";
+export * from "./slick.ts";
