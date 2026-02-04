@@ -89,13 +89,15 @@ export abstract class Slick {
 	private static async loadStyles(styles: string[], type: string): Promise<void> {
 		await Promise.all(
 			styles.map((href) => {
-				return new Promise<void>((resolve) => {
+				return new Promise<void>((resolve, reject) => {
 					const style = document.createElement("link");
 					style.setAttribute("rel", "stylesheet");
 					style.setAttribute("slick-type", type);
 					style.setAttribute("href", href);
 
+					style.onerror = () => reject(new Error(`Failed to load style: ${href}`));
 					style.onload = () => resolve();
+
 					Slick.favicon.insertAdjacentElement("beforebegin", style);
 				});
 			}),
@@ -105,13 +107,15 @@ export abstract class Slick {
 	private static async loadScripts(scripts: string[], type: string): Promise<void> {
 		await Promise.all(
 			scripts.map((src) => {
-				return new Promise<void>((resolve) => {
+				return new Promise<void>((resolve, reject) => {
 					const script = document.createElement("script");
 					script.setAttribute("src", `${src}?cacheBust=${Date.now()}`);
 					script.setAttribute("slick-type", type);
 					script.setAttribute("type", "module");
 
+					script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
 					script.onload = () => resolve();
+
 					document.body.appendChild(script);
 				});
 			}),
@@ -140,7 +144,19 @@ export abstract class Slick {
 					}),
 				});
 
-			const jsonResponse = await response.json();
+			if (!response.ok) {
+				globalThis.location.href = url;
+				return;
+			}
+
+			let jsonResponse;
+			try {
+				jsonResponse = await response.json();
+			} catch {
+				globalThis.location.href = url;
+				return;
+			}
+
 			globalThis.history.pushState({}, "", response.redirected ? response.url : url);
 
 			Slick.title.innerHTML = jsonResponse.title;

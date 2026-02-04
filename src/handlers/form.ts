@@ -12,39 +12,37 @@ export class FormHandler {
 	private setupInputs(): void {
 		this.form.querySelectorAll<HTMLInputElement>("input[type='number']").forEach((input) => {
 			const allowFloat = !input.hasAttribute("data-integer-only");
-			const numberRegex = allowFloat ? /^-?\d*\.?\d*$/ : /^-?\d+$/;
 
-			const min = parseFloat(input.min) || undefined;
-			const max = parseFloat(input.max) || undefined;
-			const step = parseFloat(input.step) || undefined;
+			const min = parseFloat(input.min);
+			const max = parseFloat(input.max);
+			const step = parseFloat(input.step);
 
-			let lastValue = input.value;
 			input.addEventListener("input", () => {
-				const value = input.value;
+				input.value = input.value
+					.replace(/[^\d.\-]/g, "")
+					.replace(/(?!^)-/g, "");
 
-				if (value !== "" && !numberRegex.test(value)) {
-					input.value = lastValue;
-					return;
+				if (allowFloat) {
+					input.value = input.value.replace(/(\..*)\./g, "$1");
+				} else {
+					input.value = input.value.replace(/\./g, "");
 				}
-
-				const numValue = parseFloat(value);
-
-				if (min && numValue < min) {
-					input.value = min.toString();
-				} else if (max && numValue > max) {
-					input.value = max.toString();
-				}
-
-				lastValue = input.value;
 			});
 
 			input.addEventListener("change", () => {
-				const value = input.value;
-				const numValue = parseFloat(value);
+				const numValue = parseFloat(input.value);
+				if (isNaN(numValue)) return;
 
-				if (step) {
+				if (!isNaN(min) && numValue < min) {
+					input.value = min.toString();
+				} else if (!isNaN(max) && numValue > max) {
+					input.value = max.toString();
+				}
+
+				if (!isNaN(step)) {
 					const rounded = Math.round(numValue / step) * step;
-					input.value = rounded.toString();
+					const decimals = (step.toString().split(".")[1] || "").length;
+					input.value = rounded.toFixed(decimals);
 				}
 			});
 		});
@@ -61,7 +59,11 @@ export class FormHandler {
 			case "csv":
 				return input.value.split(",").map((v) => v.trim());
 			case "json":
-				return JSON.parse(input.value);
+				try {
+					return JSON.parse(input.value);
+				} catch {
+					return null;
+				}
 			default:
 				return input.value;
 		}
@@ -94,11 +96,17 @@ export class FormHandler {
 						case "radio":
 							if (input.checked) {
 								body[input.name] = input.value;
+							} else if (!(input.name in body)) {
+								body[input.name] = null;
 							}
 							break;
 
 						case "file":
-							body[input.name] = input.files?.length === 1 ? input.files[0] : input.files;
+							body[input.name] = input.files?.length === 0
+								? null
+								: input.files?.length === 1
+								? input.files[0]
+								: input.files;
 							break;
 
 						default:
@@ -135,10 +143,12 @@ export class FormHandler {
 			const submitButton = this.form.querySelector<HTMLButtonElement | HTMLInputElement>('*[type="submit"]');
 			if (submitButton) submitButton.disabled = true;
 
-			const body = FormHandler.parseForm(this.form);
-			await this.handler(body, submitButton);
-
-			if (submitButton) submitButton.disabled = false;
+			try {
+				const body = FormHandler.parseForm(this.form);
+				await this.handler(body, submitButton);
+			} finally {
+				if (submitButton) submitButton.disabled = false;
+			}
 		});
 	}
 }
