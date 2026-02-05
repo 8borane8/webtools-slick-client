@@ -5,14 +5,13 @@ export abstract class Cookies {
 		const cookie = cookies.find((cookie) => cookie.startsWith(csequence));
 		if (!cookie) return null;
 
-		return decodeURIComponent(cookie.slice(csequence.length));
+		return cookie.slice(csequence.length);
 	}
 
 	public static set(cname: string, cvalue: string, exdays: number = 365): void {
 		const date = new Date(Date.now() + exdays * 24 * 60 * 60 * 1000);
 
-		const encodedValue = encodeURIComponent(cvalue);
-		document.cookie = `${cname}=${encodedValue}; expires=${date.toUTCString()}; path=/; secure; SameSite=Lax;`;
+		document.cookie = `${cname}=${cvalue}; expires=${date.toUTCString()}; path=/; secure; SameSite=Lax;`;
 	}
 
 	public static delete(cname: string): void {
