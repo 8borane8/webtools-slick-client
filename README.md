@@ -93,6 +93,7 @@ Forms with `method="post"` are submitted via fetch and follow redirects:
 - Supports optional attributes for redirect behavior
 
 **Optional form attributes:**
+
 - `data-reload-template` - Reload the template on redirect (passes `reload: true` to redirect)
 - `data-go-top` - Scroll to top after redirect (passes `goTop: true` to redirect)
 
@@ -116,7 +117,8 @@ Forms with `method="post"` are submitted via fetch and follow redirects:
 </form>
 ```
 
-**Note**: The server should respond with a `Location` header pointing to the next page. Slick will automatically follow this redirect.
+**Note**: The server should respond with a `Location` header pointing to the next page. Slick will automatically follow
+this redirect.
 
 #### Manual Navigation
 
@@ -176,7 +178,8 @@ parsing:
 - **Email normalization**: Automatically trims and lowercases email inputs
 - **Data transformation**: Supports CSV and JSON transformations via `data-transform` attribute (with error handling)
 - **Type handling**: Properly handles checkboxes, radio buttons, files, numbers, dates, and more
-- **Submit button management**: Automatically disables submit button during processing (always re-enabled, even on error)
+- **Submit button management**: Automatically disables submit button during processing (always re-enabled, even on
+  error)
 
 #### Example Usage
 
@@ -263,7 +266,7 @@ new FormHandler(form, async (body, submitButton) => {
 	//   tags: ["tag1", "tag2", "tag3"],
 	//   message: { parsed: "json" } // or null if invalid JSON
 	// }
-	
+
 	// submitButton is provided for custom loading states
 	// Note: The button is automatically re-enabled even if an error occurs
 });
