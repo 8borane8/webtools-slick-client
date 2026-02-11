@@ -80,8 +80,13 @@ export abstract class Slick {
 					body: new FormData(form),
 				});
 
-				const location = response.headers.get("Location");
-				if (location) await Slick.redirect(location);
+				const location = response.headers.get("location");
+				if (location) {
+					const reloadTemplate = form.hasAttribute("data-reload-template");
+					const goTop = form.hasAttribute("data-go-top");
+
+					await Slick.redirect(location, reloadTemplate, goTop);
+				}
 			});
 		});
 	}
