@@ -156,7 +156,8 @@ The `FormHandler` class provides automatic form handling with validation, data t
 parsing:
 
 - **Automatic form parsing**: Converts form elements to a structured object
-- **Input sanitization**: Automatically filters invalid characters from numeric inputs (`inputmode="decimal"` / `inputmode="numeric"`)
+- **Input sanitization**: Automatically filters invalid characters from numeric inputs (`inputmode="decimal"` /
+  `inputmode="numeric"`)
 - **Input validation**: Applies min/max constraints and step rounding on blur for those inputs
 - **Email normalization**: Automatically trims and lowercases email inputs
 - **Data transformation**: Supports CSV and JSON transformations via `data-transform` attribute (with error handling)
@@ -182,7 +183,8 @@ new FormHandler(form, async (body) => {
 - **Checkbox**: Returns boolean value
 - **Radio**: Returns selected value or `null` if none selected
 - **Number/Range** (`type="number"` / `type="range"`): Returns number or `null` if empty. Parsed only (no sanitization)
-- **Numeric inputs** (`inputmode="decimal"` / `inputmode="numeric"`): Returns number or `null` if empty. Sanitized on input and validated (min/max/step) on blur. Use `inputmode="decimal"` for floats, `inputmode="numeric"` for integers
+- **Numeric inputs** (`inputmode="decimal"` / `inputmode="numeric"`): Returns number or `null` if empty. Sanitized on
+  input and validated (min/max/step) on blur. Use `inputmode="decimal"` for floats, `inputmode="numeric"` for integers
 - **File**: Returns File object (single), FileList (multiple), or `null` if empty
 - **Email**: Automatically trimmed and lowercased during input
 - **Text/Textarea**: Supports data transformations
@@ -205,7 +207,8 @@ Use the `data-transform` attribute to transform input values:
 
 #### Numeric Input Validation
 
-Only inputs with `inputmode="decimal"` or `inputmode="numeric"` are sanitized and validated. Inputs with `type="number"` or `type="range"` are parsed as numbers but left as-is (no character filtering or min/max/step on blur).
+Only inputs with `inputmode="decimal"` or `inputmode="numeric"` are sanitized and validated. Inputs with `type="number"`
+or `type="range"` are parsed as numbers but left as-is (no character filtering or min/max/step on blur).
 
 For `inputmode` inputs:
 
