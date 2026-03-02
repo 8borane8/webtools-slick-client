@@ -10,42 +10,61 @@ export class FormHandler {
 	}
 
 	private setupInputs(): void {
-		this.form.querySelectorAll<HTMLInputElement>("input[type='number']").forEach((input) => {
-			const allowFloat = !input.hasAttribute("data-integer-only");
+		this.form.querySelectorAll<HTMLInputElement>("input[inputmode='decimal'], input[inputmode='numeric']")
+			.forEach((input) => {
+				const allowFloat = input.getAttribute("inputmode") === "decimal";
+				const min = parseFloat(input.min);
+				const max = parseFloat(input.max);
+				const step = parseFloat(input.step);
 
-			const min = parseFloat(input.min);
-			const max = parseFloat(input.max);
-			const step = parseFloat(input.step);
+				input.addEventListener("input", () => {
+					const cursor = input.selectionStart ?? 0;
+					const prev = input.value;
 
-			input.addEventListener("input", () => {
-				input.value = input.value
-					.replace(/[^\d.\-]/g, "")
-					.replace(/(?!^)-/g, "");
+					let value = prev.replace(/[^\d.-]/g, "");
 
-				if (allowFloat) {
-					input.value = input.value.replace(/(\..*)\./g, "$1");
-				} else {
-					input.value = input.value.replace(/\./g, "");
-				}
+					const isNegative = value.startsWith("-");
+					value = value.replace(/-/g, "");
+					if (isNegative) value = "-" + value;
+
+					if (allowFloat) {
+						const dotIndex = value.indexOf(".");
+						if (dotIndex !== -1) {
+							value = value.slice(0, dotIndex + 1) +
+								value.slice(dotIndex + 1).replace(/\./g, "");
+						}
+					} else {
+						value = value.replace(/\./g, "");
+					}
+
+					if (value !== prev) {
+						const diff = value.length - prev.length;
+						input.value = value;
+
+						const newCursor = Math.max(0, cursor + diff);
+						input.setSelectionRange(newCursor, newCursor);
+					}
+				});
+
+				input.addEventListener("change", () => {
+					let value = parseFloat(input.value);
+					if (isNaN(value)) {
+						input.value = "";
+						return;
+					}
+
+					if (!isNaN(min) && value < min) value = min;
+					else if (!isNaN(max) && value > max) value = max;
+
+					if (!isNaN(step) && step > 0) {
+						const decimals = step.toString().split(".")[1]?.length || 0;
+						const rounded = Math.round(value / step) * step;
+						input.value = rounded.toFixed(decimals);
+					} else {
+						input.value = allowFloat ? value.toString() : Math.trunc(value).toString();
+					}
+				});
 			});
-
-			input.addEventListener("change", () => {
-				const numValue = parseFloat(input.value);
-				if (isNaN(numValue)) return;
-
-				if (!isNaN(min) && numValue < min) {
-					input.value = min.toString();
-				} else if (!isNaN(max) && numValue > max) {
-					input.value = max.toString();
-				}
-
-				if (!isNaN(step)) {
-					const rounded = Math.round(numValue / step) * step;
-					const decimals = (step.toString().split(".")[1] || "").length;
-					input.value = rounded.toFixed(decimals);
-				}
-			});
-		});
 
 		this.form.querySelectorAll<HTMLInputElement>("input[type='email']").forEach((input) => {
 			input.addEventListener("input", () => {
@@ -83,6 +102,8 @@ export class FormHandler {
 				case "INPUT": {
 					const input = el as HTMLInputElement;
 
+					const inputmode = input.getAttribute("inputmode");
+
 					switch (input.type) {
 						case "checkbox":
 							body[input.name] = input.checked;
@@ -109,8 +130,18 @@ export class FormHandler {
 								: input.files;
 							break;
 
-						default:
-							body[input.name] = FormHandler.transform(input);
+						default: {
+							if (inputmode === "decimal") {
+								const value = parseFloat(input.value);
+								body[input.name] = !isNaN(value) ? value : null;
+							} else if (inputmode === "numeric") {
+								const value = parseInt(input.value);
+								body[input.name] = !isNaN(value) ? value : null;
+							} else {
+								body[input.name] = FormHandler.transform(input);
+							}
+							break;
+						}
 					}
 					break;
 				}

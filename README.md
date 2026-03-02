@@ -77,7 +77,7 @@ Forms with `method="get"` are automatically converted to query parameters:
 ```html
 <form method="get" action="/search">
 	<input type="text" name="q" />
-	<input type="number" name="page" value="1" />
+	<input type="text" inputmode="numeric" name="page" value="1" />
 	<button type="submit">Search</button>
 </form>
 <!-- Submitting will navigate to: /search?q=...&page=1 -->
@@ -85,40 +85,23 @@ Forms with `method="get"` are automatically converted to query parameters:
 
 ##### Forms with POST method
 
-Forms with `method="post"` are submitted via fetch and follow redirects:
+Forms with `method="post"` are **not** handled in SPA mode. Submitting a POST form triggers a full browser navigation:
+the page is entirely reloaded (same behavior as a classic multi-page application).
 
-- Form data is sent as `FormData` via POST request
-- Server should return a `Location` header for redirect
-- Slick automatically follows the redirect using `Slick.redirect()`
-- Supports optional attributes for redirect behavior
-
-**Optional form attributes:**
-
-- `data-reload-template` - Reload the template on redirect (passes `reload: true` to redirect)
-- `data-go-top` - Scroll to top after redirect (passes `goTop: true` to redirect)
+- Use **FormHandler** if you need to submit data via POST while staying in SPA (e.g. fetch + `Slick.redirect()` in your
+  handler).
+- Use a normal POST form when you want a full page reload (e.g. logout, critical actions).
 
 ```html
-<!-- Basic POST form -->
+<!-- This form will cause a full page reload -->
 <form method="post" action="/submit">
 	<input type="text" name="username" />
 	<button type="submit">Submit</button>
 </form>
-
-<!-- POST form with template reload -->
-<form method="post" action="/update" data-reload-template>
-	<input type="text" name="data" />
-	<button type="submit">Update</button>
-</form>
-
-<!-- POST form that doesn't scroll to top -->
-<form method="post" action="/save" data-go-top="false">
-	<input type="text" name="content" />
-	<button type="submit">Save</button>
-</form>
 ```
 
-**Note**: The server should respond with a `Location` header pointing to the next page. Slick will automatically follow
-this redirect.
+**Note**: For in-SPA form submission with POST data, use **FormHandler** and send the request yourself, then call
+`Slick.redirect()` if needed.
 
 #### Manual Navigation
 
@@ -173,11 +156,11 @@ The `FormHandler` class provides automatic form handling with validation, data t
 parsing:
 
 - **Automatic form parsing**: Converts form elements to a structured object
-- **Input sanitization**: Automatically filters invalid characters from number inputs
-- **Input validation**: Applies min/max constraints and step rounding on blur
+- **Input sanitization**: Automatically filters invalid characters from numeric inputs (`inputmode="decimal"` / `inputmode="numeric"`)
+- **Input validation**: Applies min/max constraints and step rounding on blur for those inputs
 - **Email normalization**: Automatically trims and lowercases email inputs
 - **Data transformation**: Supports CSV and JSON transformations via `data-transform` attribute (with error handling)
-- **Type handling**: Properly handles checkboxes, radio buttons, files, numbers, dates, and more
+- **Type handling**: Properly handles checkboxes, radio buttons, files, numeric/decimal inputs, and more
 - **Submit button management**: Automatically disables submit button during processing (always re-enabled, even on
   error)
 
@@ -198,7 +181,8 @@ new FormHandler(form, async (body) => {
 
 - **Checkbox**: Returns boolean value
 - **Radio**: Returns selected value or `null` if none selected
-- **Number/Range**: Returns number or `null` if empty. Automatically sanitizes input and applies min/max/step on blur
+- **Number/Range** (`type="number"` / `type="range"`): Returns number or `null` if empty. Parsed only (no sanitization)
+- **Numeric inputs** (`inputmode="decimal"` / `inputmode="numeric"`): Returns number or `null` if empty. Sanitized on input and validated (min/max/step) on blur. Use `inputmode="decimal"` for floats, `inputmode="numeric"` for integers
 - **File**: Returns File object (single), FileList (multiple), or `null` if empty
 - **Email**: Automatically trimmed and lowercased during input
 - **Text/Textarea**: Supports data transformations
@@ -219,20 +203,23 @@ Use the `data-transform` attribute to transform input values:
 
 **Note**: JSON transformation returns `null` if the JSON string is invalid, preventing errors.
 
-#### Number Input Validation
+#### Numeric Input Validation
 
-Number inputs are automatically sanitized during input (removes invalid characters) and validated on blur:
+Only inputs with `inputmode="decimal"` or `inputmode="numeric"` are sanitized and validated. Inputs with `type="number"` or `type="range"` are parsed as numbers but left as-is (no character filtering or min/max/step on blur).
 
-- **Input event**: Filters out non-numeric characters (except `.` and `-` for floats)
+For `inputmode` inputs:
+
+- **Input event**: Filters out non-numeric characters (except `.` and `-` for decimals)
 - **Change event**: Applies min/max constraints and step rounding
-- **Integer mode**: Use `data-integer-only` to prevent decimal points
+- **`inputmode="numeric"`**: Integers only (no decimal point)
+- **`inputmode="decimal"`**: Floats allowed
 
 ```html
 <!-- Integer only (no decimals) -->
-<input type="number" name="age" data-integer-only min="0" max="120" />
+<input type="text" inputmode="numeric" name="age" min="0" max="120" />
 
 <!-- Float allowed with step rounding -->
-<input type="number" name="price" min="0" max="1000" step="0.01" />
+<input type="text" inputmode="decimal" name="price" min="0" max="1000" step="0.01" />
 ```
 
 #### Example Form
@@ -241,7 +228,7 @@ Number inputs are automatically sanitized during input (removes invalid characte
 <form id="myForm">
 	<input type="text" name="username" required />
 	<input type="email" name="email" required />
-	<input type="number" name="age" data-integer-only min="0" max="120" />
+	<input type="text" inputmode="numeric" name="age" min="0" max="120" />
 	<input type="checkbox" name="newsletter" />
 	<input type="radio" name="gender" value="male" />
 	<input type="radio" name="gender" value="female" />

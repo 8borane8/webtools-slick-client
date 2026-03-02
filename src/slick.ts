@@ -63,32 +63,6 @@ export abstract class Slick {
 				await Slick.redirect(`${Slick.getPathFromUrl(action)}?${params}`);
 			});
 		});
-
-		const formPostSelector = `${pre}form[method='post'], ${pre}form[method='POST']`;
-		document.querySelectorAll<HTMLFormElement>(formPostSelector).forEach((form) => {
-			form.addEventListener("submit", async (event) => {
-				const action = new URL(
-					form.getAttribute("action") || globalThis.location.pathname,
-					globalThis.location.origin,
-				);
-				if (globalThis.location.host !== action.host) return;
-
-				event.preventDefault();
-				const response = await fetch(Slick.getPathFromUrl(action), {
-					method: "POST",
-					redirect: "manual",
-					body: new FormData(form),
-				});
-
-				const location = response.headers.get("location");
-				if (location) {
-					const reloadTemplate = form.hasAttribute("data-reload-template");
-					const goTop = form.hasAttribute("data-go-top");
-
-					await Slick.redirect(location, reloadTemplate, goTop);
-				}
-			});
-		});
 	}
 
 	private static async loadStyles(styles: string[], type: string): Promise<void> {
