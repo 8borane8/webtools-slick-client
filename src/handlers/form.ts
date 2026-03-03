@@ -172,14 +172,9 @@ export class FormHandler {
 			event.preventDefault();
 
 			const submitButton = this.form.querySelector<HTMLButtonElement | HTMLInputElement>('*[type="submit"]');
-			if (submitButton) submitButton.disabled = true;
 
-			try {
-				const body = FormHandler.parseForm(this.form);
-				await this.handler(body, submitButton);
-			} finally {
-				if (submitButton) submitButton.disabled = false;
-			}
+			const body = FormHandler.parseForm(this.form);
+			await this.handler(body, submitButton);
 		});
 	}
 }

@@ -162,8 +162,6 @@ parsing:
 - **Email normalization**: Automatically trims and lowercases email inputs
 - **Data transformation**: Supports CSV and JSON transformations via `data-transform` attribute (with error handling)
 - **Type handling**: Properly handles checkboxes, radio buttons, files, numeric/decimal inputs, and more
-- **Submit button management**: Automatically disables submit button during processing (always re-enabled, even on
-  error)
 
 #### Example Usage
 
@@ -256,9 +254,6 @@ new FormHandler(form, async (body, submitButton) => {
 	//   tags: ["tag1", "tag2", "tag3"],
 	//   message: { parsed: "json" } // or null if invalid JSON
 	// }
-
-	// submitButton is provided for custom loading states
-	// Note: The button is automatically re-enabled even if an error occurs
 });
 ```
 
