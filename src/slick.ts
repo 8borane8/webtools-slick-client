@@ -4,9 +4,9 @@ export abstract class Slick {
 	private static initialized: boolean = false;
 	private static redirecting: boolean = false;
 
-	private static readonly root = document.querySelector<HTMLDivElement>("#root")!;
-	private static readonly title = document.querySelector<HTMLTitleElement>("title")!;
-	private static readonly favicon = document.querySelector<HTMLLinkElement>("link[rel='shortcut icon']")!;
+	private static root: HTMLDivElement;
+	private static title: HTMLTitleElement;
+	private static favicon: HTMLLinkElement;
 
 	private static readonly onloadListeners: Array<() => Promise<void> | void> = [];
 
@@ -16,6 +16,10 @@ export abstract class Slick {
 		Slick.template = template;
 		Slick.newVersion = newVersion;
 		Slick.initialized = true;
+
+		Slick.root = document.querySelector<HTMLDivElement>("#root")!;
+		Slick.title = document.querySelector<HTMLTitleElement>("title")!;
+		Slick.favicon = document.querySelector<HTMLLinkElement>("link[rel='shortcut icon']")!;
 
 		globalThis.addEventListener("popstate", async (event) => {
 			event.preventDefault();
