@@ -117,7 +117,7 @@ the page is entirely reloaded (same behavior as a classic multi-page application
 
 #### Manual Navigation
 
-`Slick.redirect()` accepts a relative path, a full URL, or the current `location.href` (e.g. on `popstate`).
+`Slick.redirect()` accepts a relative path or the current `location.href` (e.g. on `popstate`).
 
 ```ts
 // Redirect to a path (scrolls to top by default)
@@ -129,9 +129,6 @@ await Slick.redirect("/page", false, true);
 
 // Same page, different hash: scroll only, no fetch (unless reload is true)
 await Slick.redirect("/docs#section-2");
-
-// External URL: full browser navigation
-await Slick.redirect("https://example.com");
 ```
 
 On error (failed fetch or invalid JSON), Slick falls back to a full page load via `location.href`.

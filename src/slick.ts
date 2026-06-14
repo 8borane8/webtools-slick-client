@@ -23,7 +23,7 @@ export abstract class Slick {
 
 		globalThis.addEventListener("popstate", async (event) => {
 			event.preventDefault();
-			await Slick.redirect(globalThis.location.href);
+			await Slick.redirectWrapper(globalThis.location.href);
 		});
 
 		globalThis.addEventListener("DOMContentLoaded", () => Slick.addEventListeners(false));
@@ -37,7 +37,7 @@ export abstract class Slick {
 				if (!["", "_self"].includes(link.getAttribute("target") || "")) return;
 
 				event.preventDefault();
-				await Slick.redirect(
+				await Slick.redirectWrapper(
 					link.href,
 					link.hasAttribute("data-slick-reload"),
 					link.hasAttribute("data-slick-go-top"),
@@ -61,7 +61,7 @@ export abstract class Slick {
 					params.append(key, value.toString());
 				}
 
-				await Slick.redirect(`${action.href}?${params}`);
+				await Slick.redirectWrapper(`${action.href}?${params}`);
 			});
 		});
 	}
@@ -111,32 +111,36 @@ export abstract class Slick {
 		}
 	}
 
-	public static async redirect(to: string, reload: boolean = false, goTop: boolean = true): Promise<void> {
+	private static redirectWrapper(to: string, reload: boolean = false, goTop: boolean = true): Promise<void> | void {
 		if (Slick.redirecting) return;
 
 		const url = new URL(to, globalThis.location.href);
+		if (globalThis.location.host !== url.host) {
+			globalThis.location.href = url.href;
+			return;
+		}
+
+		if (globalThis.location.pathname + globalThis.location.search == url.pathname + url.search) {
+			Slick.handleHash(url.hash, goTop);
+			return;
+		}
+
+		return Slick.redirect(url.href + url.search + url.hash, reload, goTop);
+	}
+
+	public static async redirect(url: string, reload: boolean = false, goTop: boolean = true): Promise<void> {
+		if (Slick.redirecting) return;
+		Slick.redirecting = true;
 
 		try {
-			Slick.redirecting = true;
-
-			if (globalThis.location.host !== url.host) {
-				globalThis.location.href = url.href;
-				return;
-			}
-
-			if (!reload && globalThis.location.pathname + globalThis.location.search == url.pathname + url.search) {
-				Slick.handleHash(url.hash, goTop);
-				return;
-			}
-
 			const response = Slick.newVersion
-				? await fetch(url.href, {
+				? await fetch(url, {
 					method: "POST",
 					headers: {
 						"X-Slick-Template": reload ? "" : Slick.template,
 					},
 				})
-				: await fetch(url.href, {
+				: await fetch(url, {
 					method: "POST",
 					headers: {
 						"Content-Type": "application/json",
@@ -190,7 +194,7 @@ export abstract class Slick {
 			Slick.handleHash(globalThis.location.hash, goTop);
 			await Promise.all(Slick.onloadListeners.map((fnc) => fnc()));
 		} catch (error) {
-			globalThis.location.href = url.href;
+			globalThis.location.href = url;
 			throw error;
 		} finally {
 			Slick.redirecting = false;
