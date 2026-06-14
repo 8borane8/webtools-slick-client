@@ -23,14 +23,10 @@ export abstract class Slick {
 
 		globalThis.addEventListener("popstate", async (event) => {
 			event.preventDefault();
-			await Slick.redirect(Slick.getPathFromUrl(new URL(globalThis.location.href)));
+			await Slick.redirect(globalThis.location.href);
 		});
 
 		globalThis.addEventListener("DOMContentLoaded", () => Slick.addEventListeners(false));
-	}
-
-	private static getPathFromUrl(url: URL): string {
-		return url.pathname + url.search + url.hash;
 	}
 
 	private static addEventListeners(app = true): void {
@@ -40,11 +36,8 @@ export abstract class Slick {
 			link.addEventListener("click", async (event) => {
 				if (!["", "_self"].includes(link.getAttribute("target") || "")) return;
 
-				const url = new URL(link.href);
-				if (globalThis.location.host !== url.host) return;
-
 				event.preventDefault();
-				await Slick.redirect(Slick.getPathFromUrl(url));
+				await Slick.redirect(link.href);
 			});
 		});
 
@@ -53,7 +46,7 @@ export abstract class Slick {
 			form.addEventListener("submit", async (event) => {
 				const action = new URL(
 					form.getAttribute("action") || globalThis.location.pathname,
-					globalThis.location.origin,
+					globalThis.location.href,
 				);
 				if (globalThis.location.host !== action.host) return;
 
@@ -64,7 +57,7 @@ export abstract class Slick {
 					params.append(key, value.toString());
 				}
 
-				await Slick.redirect(`${Slick.getPathFromUrl(action)}?${params}`);
+				await Slick.redirect(`${action.href}?${params}`);
 			});
 		});
 	}
@@ -105,19 +98,25 @@ export abstract class Slick {
 		);
 	}
 
-	public static async redirect(url: string, reload: boolean = false, goTop: boolean = true): Promise<void> {
+	public static async redirect(to: string, reload: boolean = false, goTop: boolean = true): Promise<void> {
 		if (Slick.redirecting) return;
 		Slick.redirecting = true;
 
+		const url = new URL(to, globalThis.location.href);
+		if (globalThis.location.host !== url.host) {
+			globalThis.location.href = url.href;
+			return;
+		}
+
 		try {
 			const response = Slick.newVersion
-				? await fetch(url, {
+				? await fetch(url.href, {
 					method: "POST",
 					headers: {
 						"X-Slick-Template": reload ? "" : Slick.template,
 					},
 				})
-				: await fetch(url, {
+				: await fetch(url.href, {
 					method: "POST",
 					headers: {
 						"Content-Type": "application/json",
@@ -128,21 +127,9 @@ export abstract class Slick {
 					}),
 				});
 
-			if (!response.ok) {
-				globalThis.location.href = url;
-				return;
-			}
-
-			let jsonResponse;
-			try {
-				jsonResponse = await response.json();
-			} catch {
-				globalThis.location.href = url;
-				return;
-			}
-
 			globalThis.history.pushState({}, "", response.redirected ? response.url : url);
 
+			const jsonResponse = await response.json();
 			Slick.title.innerHTML = jsonResponse.title;
 			Slick.favicon.href = jsonResponse.favicon;
 
@@ -189,6 +176,7 @@ export abstract class Slick {
 
 			await Promise.all(Slick.onloadListeners.map((fnc) => fnc()));
 		} catch (error) {
+			globalThis.location.href = url.href;
 			throw error;
 		} finally {
 			Slick.redirecting = false;
