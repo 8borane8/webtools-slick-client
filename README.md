@@ -51,18 +51,30 @@ Slick automatically intercepts and handles navigation and form submissions withi
 
 All links are automatically intercepted for client-side navigation:
 
-- **Same-origin only**: Only links to the same host are intercepted
 - **Target handling**: Links with `target` attribute (except `""` or `"_self"`) are ignored
-- **Automatic redirect**: Clicking a link triggers `Slick.redirect()` with the link's URL
+- **Automatic redirect**: Clicking a link triggers `Slick.redirect()` with the link's full URL
+- **External links**: Cross-origin links trigger a full browser navigation (`location.href`)
+- **Same-page anchors**: If pathname and query string are unchanged, only the hash is handled (smooth scroll) — no fetch
+- **`data-slick-reload`**: Forces a full reload even when navigating to the current page
+- **`data-slick-go-top`**: Scrolls to the top after navigation (links do not scroll to top by default)
 
 ```html
-<!-- This link will be intercepted and handled by Slick -->
+<!-- Client-side navigation -->
 <a href="/about">About</a>
 
-<!-- This link will open in a new tab (not intercepted) -->
+<!-- Same page, different section: scroll only, no refetch -->
+<a href="/docs#installation">Installation</a>
+
+<!-- Force a refetch of the current page -->
+<a href="/dashboard" data-slick-reload>Refresh</a>
+
+<!-- Scroll to top after navigation -->
+<a href="/about" data-slick-go-top>About</a>
+
+<!-- Opens in a new tab (not intercepted) -->
 <a href="/external" target="_blank">External</a>
 
-<!-- This link to another domain won't be intercepted -->
+<!-- Full page navigation to another domain -->
 <a href="https://example.com">External Site</a>
 ```
 
@@ -105,14 +117,24 @@ the page is entirely reloaded (same behavior as a classic multi-page application
 
 #### Manual Navigation
 
+`Slick.redirect()` accepts a relative path, a full URL, or the current `location.href` (e.g. on `popstate`).
+
 ```ts
-// Redirect to a URL
+// Redirect to a path (scrolls to top by default)
 await Slick.redirect("/about");
 
 // Redirect with options
 await Slick.redirect("/page", false, true);
 // Parameters: url, reload (reload template), goTop (scroll to top)
+
+// Same page, different hash: scroll only, no fetch (unless reload is true)
+await Slick.redirect("/docs#section-2");
+
+// External URL: full browser navigation
+await Slick.redirect("https://example.com");
 ```
+
+On error (failed fetch or invalid JSON), Slick falls back to a full page load via `location.href`.
 
 #### Page Load Listeners
 

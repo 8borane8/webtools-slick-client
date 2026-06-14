@@ -37,7 +37,11 @@ export abstract class Slick {
 				if (!["", "_self"].includes(link.getAttribute("target") || "")) return;
 
 				event.preventDefault();
-				await Slick.redirect(link.href);
+				await Slick.redirect(
+					link.href,
+					link.hasAttribute("data-slick-reload"),
+					link.hasAttribute("data-slick-go-top"),
+				);
 			});
 		});
 
@@ -98,17 +102,33 @@ export abstract class Slick {
 		);
 	}
 
+	private static handleHash(hash: string, goTop: boolean): void {
+		if (hash !== "") {
+			const target = document.querySelector(hash);
+			if (target) target.scrollIntoView({ behavior: "smooth" });
+		} else if (goTop) {
+			globalThis.scrollTo({ top: 0, behavior: "smooth" });
+		}
+	}
+
 	public static async redirect(to: string, reload: boolean = false, goTop: boolean = true): Promise<void> {
 		if (Slick.redirecting) return;
-		Slick.redirecting = true;
 
 		const url = new URL(to, globalThis.location.href);
-		if (globalThis.location.host !== url.host) {
-			globalThis.location.href = url.href;
-			return;
-		}
 
 		try {
+			Slick.redirecting = true;
+
+			if (globalThis.location.host !== url.host) {
+				globalThis.location.href = url.href;
+				return;
+			}
+
+			if (!reload && globalThis.location.pathname + globalThis.location.search == url.pathname + url.search) {
+				Slick.handleHash(url.hash, goTop);
+				return;
+			}
+
 			const response = Slick.newVersion
 				? await fetch(url.href, {
 					method: "POST",
@@ -167,13 +187,7 @@ export abstract class Slick {
 			await Slick.loadScripts(jsonResponse.page.scripts, "page");
 			Slick.addEventListeners();
 
-			if (globalThis.location.hash !== "") {
-				const target = document.querySelector(globalThis.location.hash);
-				if (target) target.scrollIntoView({ behavior: "smooth" });
-			} else if (goTop) {
-				globalThis.scrollTo(0, 0);
-			}
-
+			Slick.handleHash(globalThis.location.hash, goTop);
 			await Promise.all(Slick.onloadListeners.map((fnc) => fnc()));
 		} catch (error) {
 			globalThis.location.href = url.href;
