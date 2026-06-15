@@ -111,6 +111,11 @@ export abstract class Slick {
 		}
 	}
 
+	private static isSamePage(url: URL | string): boolean {
+		url = new URL(url, globalThis.location.href);
+		return globalThis.location.pathname + globalThis.location.search == url.pathname + url.search;
+	}
+
 	private static redirectWrapper(to: string, reload: boolean = false, goTop: boolean = true): Promise<void> | void {
 		if (Slick.redirecting) return;
 
@@ -120,7 +125,7 @@ export abstract class Slick {
 			return;
 		}
 
-		if (globalThis.location.pathname + globalThis.location.search == url.pathname + url.search) {
+		if (Slick.isSamePage(url)) {
 			Slick.handleHash(url.hash, goTop);
 			return;
 		}
@@ -150,6 +155,11 @@ export abstract class Slick {
 						template: reload ? null : Slick.template,
 					}),
 				});
+
+			if (response.redirected && Slick.isSamePage(response.url)) {
+				Slick.redirecting = false;
+				return;
+			}
 
 			globalThis.history.pushState({}, "", response.redirected ? response.url : url);
 
@@ -194,8 +204,8 @@ export abstract class Slick {
 			Slick.handleHash(globalThis.location.hash, goTop);
 			await Promise.all(Slick.onloadListeners.map((fnc) => fnc()));
 		} catch (error) {
+			console.error(error);
 			globalThis.location.href = url;
-			throw error;
 		} finally {
 			Slick.redirecting = false;
 		}
