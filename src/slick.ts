@@ -40,7 +40,6 @@ export abstract class Slick {
 				await Slick.redirectWrapper(
 					link.href,
 					link.hasAttribute("data-slick-reload"),
-					link.hasAttribute("data-slick-go-top"),
 				);
 			});
 		});

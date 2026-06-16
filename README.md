@@ -56,7 +56,6 @@ All links are automatically intercepted for client-side navigation:
 - **External links**: Cross-origin links trigger a full browser navigation (`location.href`)
 - **Same-page anchors**: If pathname and query string are unchanged, only the hash is handled (smooth scroll) — no fetch
 - **`data-slick-reload`**: Forces a full reload even when navigating to the current page
-- **`data-slick-go-top`**: Scrolls to the top after navigation (links do not scroll to top by default)
 
 ```html
 <!-- Client-side navigation -->
@@ -67,9 +66,6 @@ All links are automatically intercepted for client-side navigation:
 
 <!-- Force a refetch of the current page -->
 <a href="/dashboard" data-slick-reload>Refresh</a>
-
-<!-- Scroll to top after navigation -->
-<a href="/about" data-slick-go-top>About</a>
 
 <!-- Opens in a new tab (not intercepted) -->
 <a href="/external" target="_blank">External</a>
