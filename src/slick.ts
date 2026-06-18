@@ -9,6 +9,9 @@ export abstract class Slick {
 	private static favicon: HTMLLinkElement;
 
 	private static readonly onloadListeners: Array<() => Promise<void> | void> = [];
+	private static readonly boundLinks = new WeakSet<HTMLAnchorElement>();
+	private static readonly boundForms = new WeakSet<HTMLFormElement>();
+	private static eventObserver: MutationObserver | null = null;
 
 	public static initialize(template: string, newVersion: boolean = false): void {
 		if (Slick.initialized) return;
@@ -26,42 +29,79 @@ export abstract class Slick {
 			await Slick.redirectWrapper(globalThis.location.href);
 		});
 
-		globalThis.addEventListener("DOMContentLoaded", () => Slick.addEventListeners(false));
+		if (document.readyState === "loading") {
+			globalThis.addEventListener("DOMContentLoaded", () => Slick.startEventObserver());
+		} else {
+			Slick.startEventObserver();
+		}
 	}
 
-	private static addEventListeners(app = true): void {
-		const pre = app ? "#app " : "";
+	private static startEventObserver(): void {
+		if (Slick.eventObserver) return;
 
-		document.querySelectorAll<HTMLLinkElement>(`${pre}a`).forEach((link) => {
-			link.addEventListener("click", async (event) => {
-				if (!["", "_self"].includes(link.getAttribute("target") || "")) return;
-
-				event.preventDefault();
-				await Slick.redirectWrapper(
-					link.href,
-					link.hasAttribute("data-slick-reload"),
-				);
-			});
+		Slick.eventObserver = new MutationObserver((mutations) => {
+			for (const mutation of mutations) {
+				for (const node of mutation.addedNodes) {
+					Slick.scanNode(node);
+				}
+			}
 		});
 
-		const formGetSelector = `${pre}form[method='get'], ${pre}form[method='GET']`;
-		document.querySelectorAll<HTMLFormElement>(formGetSelector).forEach((form) => {
-			form.addEventListener("submit", async (event) => {
-				const action = new URL(
-					form.getAttribute("action") || globalThis.location.pathname,
-					globalThis.location.href,
-				);
-				if (globalThis.location.host !== action.host) return;
+		Slick.eventObserver.observe(document.body, { childList: true, subtree: true });
+		Slick.scanNode(document.body);
+	}
 
-				event.preventDefault();
-				const formData = new FormData(form);
-				const params = new URLSearchParams();
-				for (const [key, value] of formData.entries()) {
-					params.append(key, value.toString());
-				}
+	private static scanNode(node: Node): void {
+		if (node instanceof HTMLAnchorElement) {
+			Slick.bindLink(node);
+		} else if (node instanceof HTMLFormElement) {
+			Slick.bindForm(node);
+		}
 
-				await Slick.redirectWrapper(`${action.href}?${params}`);
-			});
+		if (node instanceof Element) {
+			node.querySelectorAll("a").forEach((link) => Slick.bindLink(link));
+			node.querySelectorAll<HTMLFormElement>("form[method='get'], form[method='GET']").forEach((form) =>
+				Slick.bindForm(form)
+			);
+		}
+	}
+
+	private static bindLink(link: HTMLAnchorElement): void {
+		if (Slick.boundLinks.has(link)) return;
+		Slick.boundLinks.add(link);
+
+		link.addEventListener("click", async (event) => {
+			if (!["", "_self"].includes(link.getAttribute("target") || "")) return;
+
+			event.preventDefault();
+			await Slick.redirectWrapper(
+				link.href,
+				link.hasAttribute("data-slick-reload"),
+			);
+		});
+	}
+
+	private static bindForm(form: HTMLFormElement): void {
+		if (Slick.boundForms.has(form)) return;
+		if ((form.getAttribute("method") || "").toLowerCase() !== "get") return;
+
+		Slick.boundForms.add(form);
+
+		form.addEventListener("submit", async (event) => {
+			const action = new URL(
+				form.getAttribute("action") || globalThis.location.pathname,
+				globalThis.location.href,
+			);
+			if (globalThis.location.host !== action.host) return;
+
+			event.preventDefault();
+			const formData = new FormData(form);
+			const params = new URLSearchParams();
+			for (const [key, value] of formData.entries()) {
+				params.append(key, value.toString());
+			}
+
+			await Slick.redirectWrapper(`${action.href}?${params}`);
 		});
 	}
 
@@ -124,12 +164,13 @@ export abstract class Slick {
 			return;
 		}
 
-		if (Slick.isSamePage(url)) {
+		if (!reload && Slick.isSamePage(url)) {
+			globalThis.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
 			Slick.handleHash(url.hash, goTop);
 			return;
 		}
 
-		return Slick.redirect(url.href + url.search + url.hash, reload, goTop);
+		return Slick.redirect(url.href, reload, goTop);
 	}
 
 	public static async redirect(url: string, reload: boolean = false, goTop: boolean = true): Promise<void> {
@@ -183,7 +224,6 @@ export abstract class Slick {
 				Array.from(document.querySelectorAll("script[slick-type='template']")).forEach((s) => s.remove());
 
 				await Slick.loadScripts(jsonResponse.template.scripts, "template");
-				Slick.addEventListeners(false);
 			}
 
 			headChildren.slice(headChildren.indexOf(Slick.favicon) + 1).forEach((e) => e.remove());
@@ -198,7 +238,6 @@ export abstract class Slick {
 			Array.from(document.querySelectorAll("script[slick-type='page']")).forEach((s) => s.remove());
 
 			await Slick.loadScripts(jsonResponse.page.scripts, "page");
-			Slick.addEventListeners();
 
 			Slick.handleHash(globalThis.location.hash, goTop);
 			await Promise.all(Slick.onloadListeners.map((fnc) => fnc()));
