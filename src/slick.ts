@@ -3,6 +3,7 @@ export abstract class Slick {
 	private static newVersion: boolean = false;
 	private static initialized: boolean = false;
 	private static redirecting: boolean = false;
+	private static renderedPath: string;
 
 	private static root: HTMLDivElement;
 	private static title: HTMLTitleElement;
@@ -23,10 +24,10 @@ export abstract class Slick {
 		Slick.root = document.querySelector<HTMLDivElement>("#root")!;
 		Slick.title = document.querySelector<HTMLTitleElement>("title")!;
 		Slick.favicon = document.querySelector<HTMLLinkElement>("link[rel='shortcut icon']")!;
+		Slick.renderedPath = globalThis.location.pathname + globalThis.location.search;
 
-		globalThis.addEventListener("popstate", async (event) => {
-			event.preventDefault();
-			await Slick.redirectWrapper(globalThis.location.href);
+		globalThis.addEventListener("popstate", async () => {
+			await Slick.redirectWrapper(globalThis.location.href, false, true, true);
 		});
 
 		if (document.readyState === "loading") {
@@ -150,12 +151,21 @@ export abstract class Slick {
 		}
 	}
 
-	private static isSamePage(url: URL | string): boolean {
-		url = new URL(url, globalThis.location.href);
-		return globalThis.location.pathname + globalThis.location.search == url.pathname + url.search;
+	private static getPath(url: URL | string): string {
+		const parsed = new URL(url, globalThis.location.href);
+		return parsed.pathname + parsed.search;
 	}
 
-	private static redirectWrapper(to: string, reload: boolean = false, goTop: boolean = true): Promise<void> | void {
+	private static isRenderedPage(url: URL | string): boolean {
+		return Slick.renderedPath === Slick.getPath(url);
+	}
+
+	private static redirectWrapper(
+		to: string,
+		reload: boolean = false,
+		goTop: boolean = true,
+		fromHistory: boolean = false,
+	): Promise<void> | void {
 		if (Slick.redirecting) return;
 
 		const url = new URL(to, globalThis.location.href);
@@ -164,16 +174,23 @@ export abstract class Slick {
 			return;
 		}
 
-		if (!reload && Slick.isSamePage(url)) {
-			globalThis.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
+		if (!reload && Slick.isRenderedPage(url)) {
+			if (!fromHistory) {
+				globalThis.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
+			}
 			Slick.handleHash(url.hash, goTop);
 			return;
 		}
 
-		return Slick.redirect(url.href, reload, goTop);
+		return Slick.redirect(url.href, reload, goTop, fromHistory);
 	}
 
-	public static async redirect(url: string, reload: boolean = false, goTop: boolean = true): Promise<void> {
+	public static async redirect(
+		url: string,
+		reload: boolean = false,
+		goTop: boolean = true,
+		fromHistory: boolean = false,
+	): Promise<void> {
 		if (Slick.redirecting) return;
 		Slick.redirecting = true;
 
@@ -196,12 +213,25 @@ export abstract class Slick {
 					}),
 				});
 
-			if (response.redirected && Slick.isSamePage(response.url)) {
-				Slick.redirecting = false;
+			const finalUrl = response.redirected ? response.url : url;
+
+			if (response.redirected && Slick.isRenderedPage(finalUrl)) {
+				if (fromHistory) {
+					globalThis.history.replaceState({}, "", finalUrl);
+				} else {
+					globalThis.history.pushState({}, "", finalUrl);
+				}
+				Slick.handleHash(new URL(finalUrl, globalThis.location.href).hash, goTop);
 				return;
 			}
 
-			globalThis.history.pushState({}, "", response.redirected ? response.url : url);
+			if (fromHistory) {
+				if (response.redirected) {
+					globalThis.history.replaceState({}, "", finalUrl);
+				}
+			} else {
+				globalThis.history.pushState({}, "", finalUrl);
+			}
 
 			const jsonResponse = await response.json();
 			Slick.title.innerHTML = jsonResponse.title;
@@ -239,7 +269,8 @@ export abstract class Slick {
 
 			await Slick.loadScripts(jsonResponse.page.scripts, "page");
 
-			Slick.handleHash(globalThis.location.hash, goTop);
+			Slick.renderedPath = Slick.getPath(finalUrl);
+			Slick.handleHash(new URL(finalUrl, globalThis.location.href).hash, goTop);
 			await Promise.all(Slick.onloadListeners.map((fnc) => fnc()));
 		} catch (error) {
 			console.error(error);
